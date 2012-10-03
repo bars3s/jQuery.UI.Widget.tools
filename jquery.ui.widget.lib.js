@@ -16,7 +16,7 @@
      * @return {jQuery.Widget}
      */
     W.prototype._log = function () {
-        var args = ['root@server:', this.element, this];
+        var args = [this.widgetName + ':', this.element, this];
         args = args.concat(Array.prototype.slice.call(arguments, 0));
         console.log.apply(console, args);
         return this;
