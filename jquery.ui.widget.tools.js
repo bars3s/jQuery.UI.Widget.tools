@@ -135,7 +135,7 @@
      * Set mod value class to block or element
      * @param {string} modName
      * @param {jQuery} [elem]
-     * @param {string} [modValue]
+     * @param {string} [modValue=null]
      * @return {jQuery.Widget}
      */
     W.prototype._setMod = function (elem, modName, modValue) {
@@ -156,6 +156,10 @@
             this._delMod(elem, modName);
         }
 
+        if(!modValue){
+            modValue = null;
+        }
+
         elem.addClass(buildModClass(prefix, modName, modValue));
         return this;
     };
@@ -164,7 +168,6 @@
      * Remove mod value class from block or element
      * @param {string} modName
      * @param {jQuery} [elem]
-     * @param {string} [modValue]
      * @return {jQuery.Widget}
      */
     W.prototype._delMod = function (elem, modName) {
@@ -196,7 +199,7 @@
      * Check value mod class at block or element
      * @param {string} modName
      * @param {jQuery} [elem]
-     * @param {string} [modValue]
+     * @param {string} [modValue=null]
      * @return {boolean}
      */
     W.prototype._hasMod = function (elem, modName, modValue) {
@@ -217,7 +220,7 @@
      * Get mod value of block or element
      * @param {string}modName
      * @param {jQuery} [elem]
-     * @return {string}
+     * @return {string|null|undefined} if not such mod return undefined. if empty mod value return null.
      */
     W.prototype._getMod = function (elem, modName) {
         var prefix, elemName;
