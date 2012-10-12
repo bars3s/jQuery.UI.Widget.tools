@@ -16,9 +16,12 @@
      * @return {jQuery.Widget}
      */
     W.prototype._log = function () {
-        var args = [this.widgetName + ':', this.element, this];
-        args = args.concat(Array.prototype.slice.call(arguments, 0));
-        console.log.apply && console.log.apply(console, args);
+        var args;
+        if (typeof window.console !== 'undefined' && typeof console.log.apply !== 'undefined') {
+            args = [this.widgetName + ':', this.element, this];
+            args = args.concat(Array.prototype.slice.call(arguments, 0));
+            console.log.apply(console, args);
+        }
         return this;
     };
 
