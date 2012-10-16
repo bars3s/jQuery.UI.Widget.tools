@@ -37,6 +37,32 @@
         };
     }
 
+    W.prototype._avoidEvent = function (eventName, eventCallback, avoidBlock, listenBlock) {
+        var _this = this,
+            eventData = {}, avoidEventData = {};
+
+        listenBlock = listenBlock || this.element;
+        eventData[eventName] = eventCallback;
+        avoidEventData[eventName] = function () {
+            stopEventListen();
+            setTimeout(function () {
+                startEventListen();
+            }, 0);
+        };
+
+        function startEventListen() {
+            _this._on(listenBlock, eventData);
+        }
+
+        function stopEventListen() {
+            _this._off(listenBlock, eventName);
+        }
+
+
+        this._on(avoidBlock, avoidEventData);
+        startEventListen();
+    };
+
     /********************************************************/
     var buildElemClass = function (prefix, elemName) {
         return prefix + '__' + elemName;
@@ -225,17 +251,20 @@
      * @return {boolean}
      */
     W.prototype._hasMod = function (elem, modName, modValue) {
+        var isBlock = false;
+
         if (typeof elem === 'string') {
             modValue = modName;
             modName = elem;
             elem = this.element;
+            isBlock = true;
         }
 
         if (typeof modValue === 'undefined') {
             modValue = null;
         }
 
-        return this._getMod(elem, modName) === modValue;
+        return isBlock ? this._getMod(modName) === modValue : this._getMod(elem, modName) === modValue;
     };
 
     /**
