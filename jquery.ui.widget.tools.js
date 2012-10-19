@@ -12,7 +12,7 @@
     };
 
     /**
-     * Wrapper for console.log('log', this, arguments...)
+     * Wrapper for console.log(widgetName, this, arguments...)
      * @return {jQuery.Widget}
      */
     W.prototype._log = function () {
@@ -24,6 +24,21 @@
         }
         return this;
     };
+
+    /**
+     * Wrapper for console.error(widgetName, this, arguments...)
+     * @return {jQuery.Widget}
+     */
+    W.prototype._errorLog = function () {
+        var args;
+        if (typeof window.console !== 'undefined' && typeof console.log.error !== 'undefined') {
+            args = [this.widgetName + ':', this.element, this];
+            args = args.concat(Array.prototype.slice.call(arguments, 0));
+            console.error.apply(console, args);
+        }
+        return this;
+    };
+
 
     if (typeof W.prototype['_delay'] === 'undefined') {
         /**
