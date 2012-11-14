@@ -12,15 +12,33 @@
     };
 
     /**
-     * Wrapper for console.log('log', this, arguments...)
+     * Wrapper for console.log(widgetName, this, arguments...)
      * @return {jQuery.Widget}
      */
     W.prototype._log = function () {
-        var args = [this.widgetName + ':', this.element, this];
-        args = args.concat(Array.prototype.slice.call(arguments, 0));
-        console.log.apply(console, args);
+        var args;
+        if (typeof window.console !== 'undefined' && typeof console.log.apply !== 'undefined') {
+            args = [this.widgetName + ':', this.element, this];
+            args = args.concat(Array.prototype.slice.call(arguments, 0));
+            console.log.apply(console, args);
+        }
         return this;
     };
+
+    /**
+     * Wrapper for console.error(widgetName, this, arguments...)
+     * @return {jQuery.Widget}
+     */
+    W.prototype._errorLog = function () {
+        var args;
+        if (typeof window.console !== 'undefined' && typeof console.log.error !== 'undefined') {
+            args = [this.widgetName + ':', this.element, this];
+            args = args.concat(Array.prototype.slice.call(arguments, 0));
+            console.error.apply(console, args);
+        }
+        return this;
+    };
+
 
     if (typeof W.prototype['_delay'] === 'undefined') {
         /**
@@ -33,6 +51,32 @@
             return setTimeout($.proxy(func, this), delay || 0);
         };
     }
+
+    W.prototype._avoidEvent = function (eventName, eventCallback, avoidBlock, listenBlock) {
+        var _this = this,
+            eventData = {}, avoidEventData = {};
+
+        listenBlock = listenBlock || this.element;
+        eventData[eventName] = eventCallback;
+        avoidEventData[eventName] = function () {
+            stopEventListen();
+            setTimeout(function () {
+                startEventListen();
+            }, 0);
+        };
+
+        function startEventListen() {
+            _this._on(listenBlock, eventData);
+        }
+
+        function stopEventListen() {
+            _this._off(listenBlock, eventName);
+        }
+
+
+        this._on(avoidBlock, avoidEventData);
+        startEventListen();
+    };
 
     /********************************************************/
     var buildElemClass = function (prefix, elemName) {
@@ -49,14 +93,18 @@
 
     var BEM_NAME_REGEXP = '[a-z0-9\-]+';
 
-    function getElemNameFromNode(prefix, ctx) {
+    function getElemNameFromNode(blockName, ctx) {
         var classList,
             classIndex,
             searchData,
             searchRegExp;
 
-        searchRegExp = new RegExp('^' + prefix + '__(' + BEM_NAME_REGEXP + ')$', 'i');
-        classList = ctx.first().attr('class').split(' ');
+        if (ctx['__bemMeta'] && ctx['__bemMeta']['block'] == blockName) {
+            return ctx['__bemMeta']['elem'];
+        }
+
+        searchRegExp = new RegExp('^' + blockName + '__(' + BEM_NAME_REGEXP + ')$', 'i');
+        classList = (ctx.attr('class') || '').split(' ');
         for (classIndex = 0; classIndex < classList.length; classIndex++) {
             searchData = $.trim(classList[classIndex]).match(searchRegExp);
             if (searchData) {
@@ -93,7 +141,7 @@
      * @return {jQuery}
      */
     W.prototype._elem = function (ctx, elemName, modName, modValue) {
-        var searchClass;
+        var searchClass, result;
 
         if (typeof ctx === 'string') {
             modValue = modName;
@@ -107,7 +155,22 @@
             searchClass = buildModClass(searchClass, modName, modValue);
         }
 
-        return ctx.find('.' + searchClass);
+        result = ctx.find('.' + searchClass);
+        result['__bemMeta'] = {
+            'elem':elemName,
+            'block':this.widgetName
+        };
+
+        return result;
+    };
+
+    /**
+     * Get class for block element
+     * @param {string} elemName
+     * @return {string}
+     */
+    W.prototype._getElemClass = function (elemName) {
+        return buildElemClass(this.widgetName, elemName);
     };
 
     /**
@@ -150,13 +213,13 @@
         } else {
             elemName = getElemNameFromNode(this.widgetName, elem);
             if (!elemName) {
-                throw "Can't find elem of " + this.widgetName + " at " + elem;
+                return this;
             }
             prefix = buildElemClass(this.widgetName, elemName);
             this._delMod(elem, modName);
         }
 
-        if(!modValue){
+        if (!modValue) {
             modValue = null;
         }
 
@@ -183,7 +246,7 @@
         } else {
             elemName = getElemNameFromNode(this.widgetName, elem);
             if (!elemName) {
-                throw "Can't find elem of " + this.widgetName + " at " + elem;
+                return this;
             }
             prefix = buildElemClass(this.widgetName, elemName);
         }
@@ -203,24 +266,27 @@
      * @return {boolean}
      */
     W.prototype._hasMod = function (elem, modName, modValue) {
+        var isBlock = false;
+
         if (typeof elem === 'string') {
             modValue = modName;
             modName = elem;
             elem = this.element;
+            isBlock = true;
         }
 
         if (typeof modValue === 'undefined') {
             modValue = null;
         }
 
-        return this._getMod(elem, modName) === modValue;
+        return isBlock ? this._getMod(modName) === modValue : this._getMod(elem, modName) === modValue;
     };
 
     /**
      * Get mod value of block or element
      * @param {string}modName
      * @param {jQuery} [elem]
-     * @return {string|null|undefined} if not such mod return undefined. if empty mod value return null.
+     * @return {string|null|undefined|false} if not such mod return undefined. if empty mod value return null. if can't find mod return false.
      */
     W.prototype._getMod = function (elem, modName) {
         var prefix, elemName;
@@ -232,7 +298,7 @@
         } else {
             elemName = getElemNameFromNode(this.widgetName, elem);
             if (!elemName) {
-                throw "Can't find elem of " + this.widgetName + " at " + elem;
+                return false;
             }
             prefix = buildElemClass(this.widgetName, elemName);
         }
